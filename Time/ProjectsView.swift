@@ -146,6 +146,7 @@ struct ProjectDetailView: View {
     @State private var runningSession: WorkSession?
     @State private var showingConfirmDelete: WorkSession?
     @State private var showingLogPastSession = false
+    @State private var showingStartInPast = false
 
     var body: some View {
         // Use TimelineView at the top level to ensure all duration calculations that depend
@@ -227,6 +228,17 @@ struct ProjectDetailView: View {
                 .buttonStyle(.bordered)
                 .padding(.horizontal)
 
+                Button(action: { showingStartInPast = true }) {
+                    HStack {
+                        Image(systemName: "clock.badge.exclamationmark")
+                        Text("Start From Past")
+                    }
+                    .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.bordered)
+                .padding(.horizontal)
+                .disabled(runningSession != nil) // Don't allow starting from past if already running
+
                 List {
                     ForEach(project.sessions.sorted(by: { $0.start > $1.start })) { session in
                         HStack {
@@ -269,6 +281,10 @@ struct ProjectDetailView: View {
         }
         .sheet(isPresented: $showingLogPastSession) {
             LogPastSessionView(project: project)
+                .environment(\.modelContext, modelContext)
+        }
+        .sheet(isPresented: $showingStartInPast) {
+            StartInPastView(project: project)
                 .environment(\.modelContext, modelContext)
         }
     }
@@ -822,5 +838,147 @@ struct LogPastSessionView: View {
             return nil
         }
         return TimeInterval(hours * 3600 + minutes * 60)
+    }
+}
+
+struct StartInPastView: View {
+    @Environment(\.modelContext) private var modelContext
+    @Environment(\.dismiss) private var dismiss
+    let project: Project
+
+    @State private var startDate = Date().addingTimeInterval(-3600) // Default to 1 hour ago
+    @State private var showingDatePicker = false
+
+    private let pastTimePresets: [(String, TimeInterval)] = [
+        ("15 min ago", -15 * 60),
+        ("30 min ago", -30 * 60),
+        ("1 hour ago", -60 * 60),
+        ("2 hours ago", -2 * 60 * 60),
+        ("4 hours ago", -4 * 60 * 60),
+        ("Start of day", 0) // Special case - will be calculated
+    ]
+
+    var body: some View {
+        NavigationView {
+            Form {
+                Section("Session Details") {
+                    HStack {
+                        Text("Project")
+                        Spacer()
+                        Text(project.name)
+                            .foregroundColor(.secondary)
+                    }
+                }
+
+                Section("Start Time") {
+                    HStack {
+                        Text("Started at")
+                        Spacer()
+                        Button(action: { showingDatePicker = true }) {
+                            Text(startDate.formatted(date: .abbreviated, time: .shortened))
+                                .foregroundColor(.blue)
+                        }
+                    }
+
+                    // Preset past time buttons
+                    LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 2), spacing: 10) {
+                        ForEach(pastTimePresets, id: \.0) { preset in
+                            Button(action: {
+                                if preset.0 == "Start of day" {
+                                    // Set to start of current day (midnight)
+                                    let calendar = Calendar.current
+                                    startDate = calendar.startOfDay(for: Date())
+                                } else {
+                                    startDate = Date().addingTimeInterval(preset.1)
+                                }
+                            }) {
+                                Text(preset.0)
+                                    .font(.caption)
+                                    .padding(.vertical, 8)
+                                    .frame(maxWidth: .infinity)
+                            }
+                            .buttonStyle(.bordered)
+                        }
+                    }
+                }
+
+                Section {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("This will start a new timer from the selected past time.")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+
+                        let elapsed = Date().timeIntervalSince(startDate)
+                        if elapsed > 0 {
+                            Text("Time since start: \(formatDuration(elapsed))")
+                                .font(.caption)
+                                .foregroundColor(.blue)
+                        } else {
+                            Text("Start time must be in the past")
+                                .font(.caption)
+                                .foregroundColor(.red)
+                        }
+                    }
+                }
+            }
+            .navigationTitle("Start From Past")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button("Cancel") {
+                        dismiss()
+                    }
+                }
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Start Timer") {
+                        startPastSession()
+                    }
+                    .disabled(startDate >= Date())
+                }
+            }
+        }
+        .sheet(isPresented: $showingDatePicker) {
+            NavigationView {
+                DatePicker("Start Date & Time", selection: $startDate, in: ...Date(), displayedComponents: [.date, .hourAndMinute])
+                    .datePickerStyle(WheelDatePickerStyle())
+                    .navigationTitle("Select Start Time")
+                    .navigationBarTitleDisplayMode(.inline)
+                    .toolbar {
+                        ToolbarItem(placement: .navigationBarTrailing) {
+                            Button("Done") {
+                                showingDatePicker = false
+                            }
+                        }
+                    }
+            }
+        }
+    }
+
+    private func startPastSession() {
+        // Create a new session that started in the past but is currently active
+        let session = WorkSession(start: startDate, end: nil)
+        session.project = project
+
+        // Calculate how much time has already elapsed since the past start time
+        let elapsedSincePastStart = Date().timeIntervalSince(startDate)
+
+        // Set up the session to reflect that it's been running since the past time
+        session.elapsedBeforePause = elapsedSincePastStart
+        session.lastResume = Date() // Mark as currently active from now
+
+        modelContext.insert(session)
+
+        do {
+            try modelContext.save()
+            dismiss()
+        } catch {
+            print("Error saving past start session: \(error)")
+        }
+    }
+
+    private func formatDuration(_ timeInterval: TimeInterval) -> String {
+        let hours = Int(timeInterval) / 3600
+        let minutes = (Int(timeInterval) % 3600) / 60
+        return "\(hours):\(String(format: "%02d", minutes))"
     }
 }
