@@ -29,7 +29,7 @@ struct TimeApp: App {
 
     var body: some Scene {
         WindowGroup {
-            ProjectsView()
+            MainTabView()
                 .onAppear {
                     // request local notification permission for background reminders
                     UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge]) { granted, error in

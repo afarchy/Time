@@ -10,7 +10,6 @@ struct ProjectsView: View {
 
     @State private var showingAdd = false
     @State private var editProject: Project?
-    @State private var showingCategories = false
 
     var body: some View {
         NavigationSplitView {
@@ -35,11 +34,6 @@ struct ProjectsView: View {
                         Label("Add Project", systemImage: "plus")
                     }
                 }
-                ToolbarItem(placement: .navigationBarLeading) {
-                    Button(action: { showingCategories = true }) {
-                        Label("Categories", systemImage: "tag")
-                    }
-                }
             }
             .sheet(isPresented: $showingAdd) {
                 AddProjectView()
@@ -47,10 +41,6 @@ struct ProjectsView: View {
             }
             .sheet(item: $editProject) { p in
                 ProjectEditView(project: p)
-                    .environment(\.modelContext, modelContext)
-            }
-            .sheet(isPresented: $showingCategories) {
-                CategoryListView()
                     .environment(\.modelContext, modelContext)
             }
         } detail: {
@@ -92,8 +82,19 @@ struct AddProjectView: View {
                     Button("Add") {
                         var cat: Category? = nil
                         if !categoryName.trimmingCharacters(in: .whitespaces).isEmpty {
-                            cat = Category(name: categoryName)
-                            modelContext.insert(cat!)
+                            // Check if category already exists
+                            let descriptor = FetchDescriptor<Category>(
+                                predicate: #Predicate<Category> { category in
+                                    category.name == categoryName
+                                }
+                            )
+                            let existingCategories = try? modelContext.fetch(descriptor)
+                            if let existing = existingCategories?.first {
+                                cat = existing
+                            } else {
+                                cat = Category(name: categoryName)
+                                modelContext.insert(cat!)
+                            }
                         }
                         let p = Project(name: name, colorHex: colorHex, category: cat)
                         modelContext.insert(p)
