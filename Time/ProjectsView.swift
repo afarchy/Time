@@ -157,7 +157,7 @@ struct ProjectDetailView: View {
 
             // Precompute values outside of the ViewBuilder's returned views.
             let total = project.sessions.reduce(0.0) { acc, s in
-                acc + ((s.end ?? now).timeIntervalSince(s.start))
+                acc + sessionDuration(s, now: now)
             }
 
             // Prefer the in-memory `runningSession` if present, otherwise detect
@@ -248,7 +248,7 @@ struct ProjectDetailView: View {
                                 Text(session.start, style: .time)
                             }
                             Spacer()
-                            Text(DurationFormatter.string(from: (session.end ?? now).timeIntervalSince(session.start)))
+                            Text(DurationFormatter.string(from: sessionDuration(session, now: now)))
                         }
                     }
                     .onDelete { idx in
@@ -292,22 +292,25 @@ struct ProjectDetailView: View {
 
     private func startOrPause() {
         if let running = runningSession {
-            // Soft pause: stop the active segment but keep session open.
-            if let lr = running.lastResume {
-                running.elapsedBeforePause += Date().timeIntervalSince(lr)
+            // Check if this session is currently paused (lastResume == nil) or active
+            if running.lastResume == nil {
+                // Session is paused, so resume it
+                running.lastResume = Date()
+                do { try modelContext.save() } catch { print("Error saving resume: \(error)") }
+                scheduleRunningNotification(for: running)
+            } else {
+                // Session is active, so pause it
+                running.elapsedBeforePause += Date().timeIntervalSince(running.lastResume!)
                 running.lastResume = nil
+                do { try modelContext.save() } catch { print("Error saving pause: \(error)") }
+                // cancel notifications while paused
+                cancelRunningNotifications(for: running)
             }
-            // keep runningSession non-nil to allow Stop to finish the session
-            // but mark UI state as paused by keeping runningSession (we'll
-            // differentiate by lastResume == nil)
-            do { try modelContext.save() } catch { print("Error saving pause: \(error)") }
-            // cancel notifications while paused
-            cancelRunningNotifications(for: running)
         } else {
-            // Start or resume
+            // No running session - either start new or resume existing paused session
             // If there's an existing session that's not ended, resume it.
             if let other = project.sessions.first(where: { $0.end == nil }) {
-                // resume
+                // resume existing paused session
                 other.lastResume = Date()
                 runningSession = other
                 do { try modelContext.save() } catch { print("Error saving resume: \(error)") }
@@ -338,6 +341,25 @@ struct ProjectDetailView: View {
         }
     }
 
+    // Helper function to calculate session duration respecting pause state
+    private func sessionDuration(_ session: WorkSession, now: Date) -> TimeInterval {
+        if let end = session.end {
+            // Session is complete, return total duration
+            return end.timeIntervalSince(session.start)
+        } else {
+            // Session is still running, check if it's paused
+            if session.lastResume == nil {
+                // Paused - return only elapsed time before pause
+                return session.elapsedBeforePause
+            } else if let lr = session.lastResume {
+                // Active - return elapsed before pause + current segment
+                return session.elapsedBeforePause + now.timeIntervalSince(lr)
+            } else {
+                // Fallback - return elapsed before pause
+                return session.elapsedBeforePause
+            }
+        }
+    }
 
 
     // Schedule hourly chime notifications at the top of each hour while a session is running
@@ -569,9 +591,9 @@ struct ProjectRowView: View {
     var body: some View {
         TimelineView(.periodic(from: .now, by: 1.0)) { context in
             let now = context.date
-            // compute total using up-to-date 'now' for any running sessions
+            // compute total using up-to-date 'now' for any running sessions, respecting pause state
             let total = project.sessions.reduce(0.0) { acc, s in
-                acc + ((s.end ?? now).timeIntervalSince(s.start))
+                acc + sessionDuration(s, now: now)
             }
 
             HStack {
@@ -597,6 +619,26 @@ struct ProjectRowView: View {
                     Image(systemName: "pencil")
                 }
                 .buttonStyle(.borderless)
+            }
+        }
+    }
+
+    // Helper function to calculate session duration respecting pause state
+    private func sessionDuration(_ session: WorkSession, now: Date) -> TimeInterval {
+        if let end = session.end {
+            // Session is complete, return total duration
+            return end.timeIntervalSince(session.start)
+        } else {
+            // Session is still running, check if it's paused
+            if session.lastResume == nil {
+                // Paused - return only elapsed time before pause
+                return session.elapsedBeforePause
+            } else if let lr = session.lastResume {
+                // Active - return elapsed before pause + current segment
+                return session.elapsedBeforePause + now.timeIntervalSince(lr)
+            } else {
+                // Fallback - return elapsed before pause
+                return session.elapsedBeforePause
             }
         }
     }
