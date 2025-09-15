@@ -16,26 +16,8 @@ struct ProjectsView: View {
         NavigationSplitView {
             List {
                 ForEach(projects) { project in
-                    HStack {
-                        NavigationLink(value: project) {
-                            HStack {
-                                Circle()
-                                    .fill(Color(hex: project.colorHex))
-                                    .frame(width: 16, height: 16)
-                                VStack(alignment: .leading) {
-                                    Text(project.name)
-                                        .font(.headline)
-                                    if let cat = project.category {
-                                        Text(cat.name).font(.caption)
-                                    }
-                                }
-                            }
-                        }
-                        Spacer()
-                        Button(action: { editProject = project }) {
-                            Image(systemName: "pencil")
-                        }
-                        .buttonStyle(.borderless)
+                    ProjectRowView(project: project) {
+                        editProject = project
                     }
                 }
                 .onDelete(perform: delete)
@@ -409,6 +391,47 @@ struct CategoryListView: View {
                         }
                     }
                 }
+            }
+        }
+    }
+}
+
+// Project list row that updates its displayed total periodically.
+struct ProjectRowView: View {
+    @ObservedObject var project: Project
+    var onEdit: () -> Void
+
+    var body: some View {
+        TimelineView(.periodic(from: .now, by: 1.0)) { context in
+            let now = context.date
+            // compute total using up-to-date 'now' for any running sessions
+            let total = project.sessions.reduce(0.0) { acc, s in
+                acc + ((s.end ?? now).timeIntervalSince(s.start))
+            }
+
+            HStack {
+                NavigationLink(value: project) {
+                    HStack {
+                        Circle()
+                            .fill(Color(hex: project.colorHex))
+                            .frame(width: 16, height: 16)
+                        VStack(alignment: .leading) {
+                            Text(project.name)
+                                .font(.headline)
+                            if let cat = project.category {
+                                Text(cat.name).font(.caption)
+                            }
+                        }
+                    }
+                }
+                Spacer()
+                Text(DurationFormatter.string(from: total))
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
+                Button(action: onEdit) {
+                    Image(systemName: "pencil")
+                }
+                .buttonStyle(.borderless)
             }
         }
     }

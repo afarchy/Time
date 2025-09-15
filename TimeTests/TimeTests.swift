@@ -5,6 +5,7 @@
 //  Created by Alon Farchy on 9/15/25.
 //
 
+import Foundation
 import Testing
 @testable import Time
 
