@@ -56,6 +56,6 @@ struct ContentView: View {
 }
 
 #Preview {
-    ContentView()
-        .modelContainer(for: Item.self, inMemory: true)
+    ProjectsView()
+        .modelContainer(for: [Item.self, Project.self, Category.self, WorkSession.self], inMemory: true)
 }

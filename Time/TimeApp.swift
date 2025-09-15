@@ -7,12 +7,16 @@
 
 import SwiftUI
 import SwiftData
+import UserNotifications
 
 @main
 struct TimeApp: App {
     var sharedModelContainer: ModelContainer = {
         let schema = Schema([
             Item.self,
+            Project.self,
+            Category.self,
+            WorkSession.self,
         ])
         let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
 
@@ -25,7 +29,17 @@ struct TimeApp: App {
 
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            ProjectsView()
+                .onAppear {
+                    // request local notification permission for background reminders
+                    UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge]) { granted, error in
+                        if let error = error {
+                            print("Notification auth error: \(error)")
+                        } else {
+                            print("Notification permission granted: \(granted)")
+                        }
+                    }
+                }
         }
         .modelContainer(sharedModelContainer)
     }

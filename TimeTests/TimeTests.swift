@@ -10,8 +10,21 @@ import Testing
 
 struct TimeTests {
 
-    @Test func example() async throws {
-        // Write your test here and use APIs like `#expect(...)` to check expected conditions.
+    @Test func projectTotalTime() async throws {
+        let s1 = WorkSession(start: Date().addingTimeInterval(-3600), end: Date().addingTimeInterval(-1800))
+        let s2 = WorkSession(start: Date().addingTimeInterval(-1800), end: Date())
+        let p = Project(name: "Test", sessions: [s1, s2])
+        #expect(p.totalTime > 0)
+    }
+
+    @Test func startAndPauseSession() async throws {
+        let p = Project(name: "X")
+        let s = WorkSession(start: Date())
+        s.project = p
+        p.sessions.append(s)
+        // simulate some elapsed time
+        s.end = s.start.addingTimeInterval(2)
+        #expect(s.duration >= 2)
     }
 
 }
