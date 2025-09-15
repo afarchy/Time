@@ -145,6 +145,7 @@ struct ProjectDetailView: View {
     @Environment(\.scenePhase) private var scenePhase
     @State private var runningSession: WorkSession?
     @State private var showingConfirmDelete: WorkSession?
+    @State private var showingLogPastSession = false
 
     var body: some View {
         // Use TimelineView at the top level to ensure all duration calculations that depend
@@ -216,6 +217,16 @@ struct ProjectDetailView: View {
                     .disabled(runningSession == nil)
                 }
 
+                Button(action: { showingLogPastSession = true }) {
+                    HStack {
+                        Image(systemName: "clock.arrow.circlepath")
+                        Text("Log Past Session")
+                    }
+                    .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.bordered)
+                .padding(.horizontal)
+
                 List {
                     ForEach(project.sessions.sorted(by: { $0.start > $1.start })) { session in
                         HStack {
@@ -255,6 +266,10 @@ struct ProjectDetailView: View {
                 // app became active — refresh running session
                 runningSession = project.sessions.first(where: { $0.end == nil })
             }
+        }
+        .sheet(isPresented: $showingLogPastSession) {
+            LogPastSessionView(project: project)
+                .environment(\.modelContext, modelContext)
         }
     }
 
@@ -627,5 +642,185 @@ struct ProjectEditView: View {
                 )
             }
         }
+    }
+}
+
+struct LogPastSessionView: View {
+    @Environment(\.modelContext) private var modelContext
+    @Environment(\.dismiss) private var dismiss
+    let project: Project
+
+    @State private var startDate = Date()
+    @State private var duration: TimeInterval = 3600 // Default to 1 hour
+    @State private var customDurationText = "1:00"
+    @State private var showingDatePicker = false
+
+    private let durationPresets: [(String, TimeInterval)] = [
+        ("15 min", 15 * 60),
+        ("30 min", 30 * 60),
+        ("1 hour", 60 * 60),
+        ("2 hours", 2 * 60 * 60),
+        ("4 hours", 4 * 60 * 60),
+        ("8 hours", 8 * 60 * 60)
+    ]
+
+    var body: some View {
+        NavigationView {
+            Form {
+                Section("Session Details") {
+                    HStack {
+                        Text("Project")
+                        Spacer()
+                        Text(project.name)
+                            .foregroundColor(.secondary)
+                    }
+                }
+
+                Section("When") {
+                    HStack {
+                        Text("Start Date & Time")
+                        Spacer()
+                        Button(action: { showingDatePicker = true }) {
+                            Text(startDate.formatted(date: .abbreviated, time: .shortened))
+                                .foregroundColor(.blue)
+                        }
+                    }
+                }
+
+                Section("Duration") {
+                    // Preset duration buttons
+                    LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 3), spacing: 10) {
+                        ForEach(durationPresets, id: \.0) { preset in
+                            Button(action: {
+                                duration = preset.1
+                                customDurationText = formatDuration(preset.1)
+                            }) {
+                                Text(preset.0)
+                                    .font(.caption)
+                                    .padding(.vertical, 8)
+                                    .padding(.horizontal, 12)
+                                    .background(duration == preset.1 ? Color.blue : Color.gray.opacity(0.2))
+                                    .foregroundColor(duration == preset.1 ? .white : .primary)
+                                    .cornerRadius(8)
+                            }
+                        }
+                    }
+
+                    // Custom duration input
+                    HStack {
+                        Text("Custom Duration")
+                        Spacer()
+                        TextField("1:30", text: $customDurationText)
+                            .textFieldStyle(RoundedBorderTextFieldStyle())
+                            .frame(width: 80)
+                            .keyboardType(.asciiCapable)
+                            .onChange(of: customDurationText) { oldValue, newValue in
+                                if let parsedDuration = parseDurationString(newValue) {
+                                    duration = parsedDuration
+                                }
+                            }
+                    }
+
+                    Text("Format: hours:minutes (e.g., 1:30 for 1 hour 30 minutes)")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+
+                Section("Summary") {
+                    HStack {
+                        Text("Start Time")
+                        Spacer()
+                        Text(startDate.formatted(date: .abbreviated, time: .shortened))
+                            .foregroundColor(.secondary)
+                    }
+
+                    HStack {
+                        Text("End Time")
+                        Spacer()
+                        Text(endDate.formatted(date: .abbreviated, time: .shortened))
+                            .foregroundColor(.secondary)
+                    }
+
+                    HStack {
+                        Text("Duration")
+                        Spacer()
+                        Text(DurationFormatter.string(from: duration))
+                            .foregroundColor(.secondary)
+                    }
+                }
+            }
+            .navigationTitle("Log Past Session")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button("Cancel") {
+                        dismiss()
+                    }
+                }
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Save") {
+                        savePastSession()
+                    }
+                    .disabled(duration <= 0)
+                }
+            }
+        }
+        .sheet(isPresented: $showingDatePicker) {
+            NavigationView {
+                DatePicker("Start Date & Time", selection: $startDate, displayedComponents: [.date, .hourAndMinute])
+                    .datePickerStyle(WheelDatePickerStyle())
+                    .navigationTitle("Select Start Time")
+                    .navigationBarTitleDisplayMode(.inline)
+                    .toolbar {
+                        ToolbarItem(placement: .navigationBarTrailing) {
+                            Button("Done") {
+                                showingDatePicker = false
+                            }
+                        }
+                    }
+            }
+        }
+    }
+
+    private var endDate: Date {
+        startDate.addingTimeInterval(duration)
+    }
+
+    private func savePastSession() {
+        let session = WorkSession(
+            start: startDate,
+            end: endDate
+        )
+        session.project = project
+        session.lastResume = nil // Past sessions are complete, not active
+        session.elapsedBeforePause = 0 // Not used for completed sessions
+
+        modelContext.insert(session)
+
+        do {
+            try modelContext.save()
+            dismiss()
+        } catch {
+            print("Error saving past session: \(error)")
+        }
+    }
+
+    private func formatDuration(_ timeInterval: TimeInterval) -> String {
+        let hours = Int(timeInterval) / 3600
+        let minutes = (Int(timeInterval) % 3600) / 60
+        return "\(hours):\(String(format: "%02d", minutes))"
+    }
+
+    private func parseDurationString(_ string: String) -> TimeInterval? {
+        let components = string.split(separator: ":")
+        guard components.count == 2,
+              let hours = Int(components[0]),
+              let minutes = Int(components[1]),
+              hours >= 0,
+              minutes >= 0,
+              minutes < 60 else {
+            return nil
+        }
+        return TimeInterval(hours * 3600 + minutes * 60)
     }
 }

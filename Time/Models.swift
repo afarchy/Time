@@ -103,12 +103,16 @@ final class WorkSession: Identifiable {
     }
 
     var duration: TimeInterval {
-        // total accumulated time from previous segments
+        // For completed sessions (with end date), calculate simple duration
+        if let endDate = end {
+            return endDate.timeIntervalSince(start)
+        }
+
+        // For ongoing sessions, use the accumulated approach
         var total = elapsedBeforePause
-        // If currently running, add the active segment time up to now/end
+        // If currently running, add the active segment time up to now
         if let lr = lastResume {
-            let endTime = end ?? Date()
-            total += endTime.timeIntervalSince(lr)
+            total += Date().timeIntervalSince(lr)
         }
         return total
     }
