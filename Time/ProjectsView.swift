@@ -60,29 +60,51 @@ struct ProjectsView: View {
 struct AddProjectView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
+    @Query(sort: [SortDescriptor(\Category.name)]) private var existingCategories: [Category]
 
     @State private var name = "New Project"
-    @State private var colorHex = "#1E90FF"
     @State private var categoryName = ""
+    @State private var selectedCategory: Category? = nil
+    @State private var showingCategoryPicker = false
 
     var body: some View {
         NavigationView {
             Form {
                 TextField("Name", text: $name)
-                ColorPicker("Color", selection: Binding(get: {
-                    Color(hex: colorHex)
-                }, set: { newColor in
-                    colorHex = newColor.toHex() ?? "#1E90FF"
-                }))
-                TextField("Category", text: $categoryName)
+
+                // Category selection
+                if existingCategories.isEmpty {
+                    TextField("Category", text: $categoryName)
+                } else {
+                    HStack {
+                        Text((selectedCategory?.name ?? (categoryName.isEmpty ? "Select or enter category" : categoryName)))
+                            .foregroundColor(selectedCategory?.name != nil || !categoryName.isEmpty ? .primary : .secondary)
+                        Spacer()
+                        Button("Choose") {
+                            showingCategoryPicker = true
+                        }
+                        .buttonStyle(.borderless)
+                    }
+                    .contentShape(Rectangle())
+                    .onTapGesture {
+                        showingCategoryPicker = true
+                    }
+
+                    if selectedCategory == nil && !categoryName.isEmpty {
+                        Text("New category: \(categoryName)")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                }
             }
             .navigationTitle("Add Project")
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Add") {
-                        var cat: Category? = nil
-                        if !categoryName.trimmingCharacters(in: .whitespaces).isEmpty {
-                            // Check if category already exists
+                        var cat: Category? = selectedCategory
+
+                        // If no category is selected but we have a name, create/find category
+                        if cat == nil && !categoryName.trimmingCharacters(in: .whitespaces).isEmpty {
                             let descriptor = FetchDescriptor<Category>(
                                 predicate: #Predicate<Category> { category in
                                     category.name == categoryName
@@ -96,7 +118,8 @@ struct AddProjectView: View {
                                 modelContext.insert(cat!)
                             }
                         }
-                        let p = Project(name: name, colorHex: colorHex, category: cat)
+
+                        let p = Project(name: name, category: cat)
                         modelContext.insert(p)
                         dismiss()
                     }
@@ -104,6 +127,13 @@ struct AddProjectView: View {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel", role: .cancel) { dismiss() }
                 }
+            }
+            .sheet(isPresented: $showingCategoryPicker) {
+                CategoryPickerView(
+                    categories: existingCategories,
+                    selectedCategory: $selectedCategory,
+                    customCategoryName: $categoryName
+                )
             }
         }
     }
@@ -309,6 +339,77 @@ struct ProjectDetailView: View {
     }
 }
 
+struct CategoryPickerView: View {
+    @Environment(\.dismiss) private var dismiss
+    let categories: [Category]
+    @Binding var selectedCategory: Category?
+    @Binding var customCategoryName: String
+
+    @State private var newCategoryName = ""
+    @State private var showingAddNew = false
+
+    var body: some View {
+        NavigationView {
+            List {
+                if !categories.isEmpty {
+                    Section("Existing Categories") {
+                        ForEach(categories) { category in
+                            HStack {
+                                Text(category.name)
+                                Spacer()
+                                if selectedCategory?.id == category.id {
+                                    Image(systemName: "checkmark")
+                                        .foregroundColor(.blue)
+                                }
+                            }
+                            .contentShape(Rectangle())
+                            .onTapGesture {
+                                selectedCategory = category
+                                customCategoryName = ""
+                                dismiss()
+                            }
+                        }
+                    }
+                }
+
+                Section("Create New Category") {
+                    HStack {
+                        TextField("New category name", text: $newCategoryName)
+                        Button("Add") {
+                            if !newCategoryName.trimmingCharacters(in: .whitespaces).isEmpty {
+                                selectedCategory = nil
+                                customCategoryName = newCategoryName.trimmingCharacters(in: .whitespaces)
+                                dismiss()
+                            }
+                        }
+                        .disabled(newCategoryName.trimmingCharacters(in: .whitespaces).isEmpty)
+                    }
+                }
+
+                if !categories.isEmpty {
+                    Section {
+                        Button("No Category") {
+                            selectedCategory = nil
+                            customCategoryName = ""
+                            dismiss()
+                        }
+                        .foregroundColor(.secondary)
+                    }
+                }
+            }
+            .navigationTitle("Select Category")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") {
+                        dismiss()
+                    }
+                }
+            }
+        }
+    }
+}
+
 struct DurationFormatter {
     static func string(from interval: TimeInterval) -> String {
         let ti = Int(interval)
@@ -443,31 +544,68 @@ struct ProjectEditView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
     @ObservedObject var project: Project
+    @Query(sort: [SortDescriptor(\Category.name)]) private var existingCategories: [Category]
 
     @State private var name: String = ""
-    @State private var colorHex: String = ""
     @State private var categoryName: String = ""
+    @State private var selectedCategory: Category? = nil
+    @State private var showingCategoryPicker = false
 
     var body: some View {
         NavigationView {
             Form {
                 TextField("Name", text: $name)
-                ColorPicker("Color", selection: Binding(get: { Color(hex: colorHex) }, set: { colorHex = $0.toHex() ?? colorHex }))
-                TextField("Category", text: $categoryName)
+
+                // Category selection
+                if existingCategories.isEmpty {
+                    TextField("Category", text: $categoryName)
+                } else {
+                    HStack {
+                        Text((selectedCategory?.name ?? (categoryName.isEmpty ? "Select or enter category" : categoryName)))
+                            .foregroundColor(selectedCategory?.name != nil || !categoryName.isEmpty ? .primary : .secondary)
+                        Spacer()
+                        Button("Choose") {
+                            showingCategoryPicker = true
+                        }
+                        .buttonStyle(.borderless)
+                    }
+                    .contentShape(Rectangle())
+                    .onTapGesture {
+                        showingCategoryPicker = true
+                    }
+
+                    if selectedCategory == nil && !categoryName.isEmpty {
+                        Text("New category: \(categoryName)")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                }
             }
             .navigationTitle("Edit Project")
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save") {
                         project.name = name
-                        project.colorHex = colorHex
-                        if !categoryName.trimmingCharacters(in: .whitespaces).isEmpty {
-                            let c = Category(name: categoryName)
-                            modelContext.insert(c)
-                            project.category = c
-                        } else {
-                            project.category = nil
+
+                        var cat: Category? = selectedCategory
+
+                        // If no category is selected but we have a name, create/find category
+                        if cat == nil && !categoryName.trimmingCharacters(in: .whitespaces).isEmpty {
+                            let descriptor = FetchDescriptor<Category>(
+                                predicate: #Predicate<Category> { category in
+                                    category.name == categoryName
+                                }
+                            )
+                            let existingCategories = try? modelContext.fetch(descriptor)
+                            if let existing = existingCategories?.first {
+                                cat = existing
+                            } else {
+                                cat = Category(name: categoryName)
+                                modelContext.insert(cat!)
+                            }
                         }
+
+                        project.category = cat
                         try? modelContext.save()
                         dismiss()
                     }
@@ -478,8 +616,15 @@ struct ProjectEditView: View {
             }
             .onAppear {
                 name = project.name
-                colorHex = project.colorHex
                 categoryName = project.category?.name ?? ""
+                selectedCategory = project.category
+            }
+            .sheet(isPresented: $showingCategoryPicker) {
+                CategoryPickerView(
+                    categories: existingCategories,
+                    selectedCategory: $selectedCategory,
+                    customCategoryName: $categoryName
+                )
             }
         }
     }
