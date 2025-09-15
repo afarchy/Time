@@ -1,5 +1,6 @@
 import SwiftUI
 import SwiftData
+import UserNotifications
 
 struct ProjectsView: View {
     @Environment(\.modelContext) private var modelContext
@@ -339,26 +340,57 @@ struct ProjectDetailView: View {
 
 
 
-    // Schedule a repeating local notification while a session is running to keep the user aware.
+    // Schedule hourly chime notifications at the top of each hour while a session is running
     private func scheduleRunningNotification(for session: WorkSession) {
         let center = UNUserNotificationCenter.current()
-        let content = UNMutableNotificationContent()
-        content.title = "Time running"
-        content.body = "You're working on \(project.name)."
-        content.sound = .default
 
-        // For production: use a 1-hour repeating interval. For quicker testing use a shorter interval (e.g., 60 seconds).
-        let trigger = UNTimeIntervalNotificationTrigger(timeInterval: 3600, repeats: true)
+        // Cancel any existing notifications for this session first
+        cancelRunningNotifications(for: session)
 
-        let request = UNNotificationRequest(identifier: session.id.uuidString, content: content, trigger: trigger)
-        center.add(request) { error in
-            if let error = error { print("Schedule notification error: \(error)") }
+        // Schedule notifications for the next 24 hours at the top of each hour
+        let calendar = Calendar.current
+        let now = Date()
+
+        for hour in 0..<24 {
+            guard let nextHour = calendar.date(byAdding: .hour, value: hour, to: now) else { continue }
+
+            // Get the start of this hour (e.g., 2:35 PM becomes 3:00 PM for next hour)
+            let startOfHour = calendar.dateInterval(of: .hour, for: nextHour)?.start ?? nextHour
+
+            // Only schedule if this hour boundary is in the future
+            guard startOfHour > now else { continue }
+
+            let content = UNMutableNotificationContent()
+            content.title = "Hourly Time Reminder"
+            content.body = "🕐 Working on \(project.name) - \(calendar.component(.hour, from: startOfHour)):00"
+            content.sound = .default
+
+            let trigger = UNCalendarNotificationTrigger(
+                dateMatching: calendar.dateComponents([.hour, .minute], from: startOfHour),
+                repeats: false
+            )
+
+            let identifier = "\(session.id.uuidString)-hour-\(hour)"
+            let request = UNNotificationRequest(identifier: identifier, content: content, trigger: trigger)
+
+            center.add(request) { error in
+                if let error = error {
+                    print("Schedule hourly notification error: \(error)")
+                }
+            }
         }
     }
 
     private func cancelRunningNotifications(for session: WorkSession) {
         let center = UNUserNotificationCenter.current()
-        center.removePendingNotificationRequests(withIdentifiers: [session.id.uuidString])
+
+        // Cancel all hourly notifications for this session
+        var identifiers = [session.id.uuidString] // Legacy identifier
+        for hour in 0..<24 {
+            identifiers.append("\(session.id.uuidString)-hour-\(hour)")
+        }
+
+        center.removePendingNotificationRequests(withIdentifiers: identifiers)
     }
 
     private var totalTimeString: String {
@@ -970,9 +1002,49 @@ struct StartInPastView: View {
 
         do {
             try modelContext.save()
+            // Schedule hourly chimes for this active session
+            scheduleHourlyNotifications(for: session)
             dismiss()
         } catch {
             print("Error saving past start session: \(error)")
+        }
+    }
+
+    // Schedule hourly chime notifications at the top of each hour while a session is running
+    private func scheduleHourlyNotifications(for session: WorkSession) {
+        let center = UNUserNotificationCenter.current()
+
+        // Schedule notifications for the next 24 hours at the top of each hour
+        let calendar = Calendar.current
+        let now = Date()
+
+        for hour in 0..<24 {
+            guard let nextHour = calendar.date(byAdding: .hour, value: hour, to: now) else { continue }
+
+            // Get the start of this hour (e.g., 2:35 PM becomes 3:00 PM for next hour)
+            let startOfHour = calendar.dateInterval(of: .hour, for: nextHour)?.start ?? nextHour
+
+            // Only schedule if this hour boundary is in the future
+            guard startOfHour > now else { continue }
+
+            let content = UNMutableNotificationContent()
+            content.title = "Hourly Time Reminder"
+            content.body = "🕐 Working on \(project.name) - \(calendar.component(.hour, from: startOfHour)):00"
+            content.sound = .default
+
+            let trigger = UNCalendarNotificationTrigger(
+                dateMatching: calendar.dateComponents([.hour, .minute], from: startOfHour),
+                repeats: false
+            )
+
+            let identifier = "\(session.id.uuidString)-hour-\(hour)"
+            let request = UNNotificationRequest(identifier: identifier, content: content, trigger: trigger)
+
+            center.add(request) { error in
+                if let error = error {
+                    print("Schedule hourly notification error: \(error)")
+                }
+            }
         }
     }
 
