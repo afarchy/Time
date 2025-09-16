@@ -803,19 +803,41 @@ struct LogPastSessionView: View {
 
                 Section("Duration") {
                     // Preset duration buttons
-                    LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 3), spacing: 10) {
-                        ForEach(durationPresets, id: \.0) { preset in
-                            Button(action: {
-                                duration = preset.1
-                                customDurationText = formatDuration(preset.1)
-                            }) {
-                                Text(preset.0)
-                                    .font(.caption)
-                                    .padding(.vertical, 8)
-                                    .padding(.horizontal, 12)
-                                    .background(duration == preset.1 ? Color.blue : Color.gray.opacity(0.2))
-                                    .foregroundColor(duration == preset.1 ? .white : .primary)
-                                    .cornerRadius(8)
+                    VStack(spacing: 8) {
+                        HStack {
+                            ForEach(Array(durationPresets.prefix(3).enumerated()), id: \.element.0) { index, preset in
+                                Button(action: {
+                                    duration = preset.1
+                                    customDurationText = formatDuration(preset.1)
+                                }) {
+                                    Text(preset.0)
+                                        .font(.caption)
+                                        .padding(.vertical, 8)
+                                        .padding(.horizontal, 12)
+                                        .frame(maxWidth: .infinity)
+                                        .background(duration == preset.1 ? Color.blue : Color.gray.opacity(0.2))
+                                        .foregroundColor(duration == preset.1 ? .white : .primary)
+                                        .cornerRadius(8)
+                                }
+                                .buttonStyle(.plain)
+                            }
+                        }
+                        HStack {
+                            ForEach(Array(durationPresets.suffix(3).enumerated()), id: \.element.0) { index, preset in
+                                Button(action: {
+                                    duration = preset.1
+                                    customDurationText = formatDuration(preset.1)
+                                }) {
+                                    Text(preset.0)
+                                        .font(.caption)
+                                        .padding(.vertical, 8)
+                                        .padding(.horizontal, 12)
+                                        .frame(maxWidth: .infinity)
+                                        .background(duration == preset.1 ? Color.blue : Color.gray.opacity(0.2))
+                                        .foregroundColor(duration == preset.1 ? .white : .primary)
+                                        .cornerRadius(8)
+                                }
+                                .buttonStyle(.plain)
                             }
                         }
                     }
