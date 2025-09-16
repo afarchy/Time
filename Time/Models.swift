@@ -103,8 +103,15 @@ final class WorkSession: Identifiable {
     }
 
     var duration: TimeInterval {
-        // For completed sessions (with end date), return the accumulated working time
-        if let _ = end {
+        // For completed sessions (with end date)
+        if let endDate = end {
+            // If elapsedBeforePause is 0, this is a past session logged manually
+            // Use the time difference between start and end
+            if elapsedBeforePause == 0 {
+                return endDate.timeIntervalSince(start)
+            }
+            // Otherwise, this is a regular session that was stopped
+            // Use the accumulated working time (respects pauses)
             return elapsedBeforePause
         }
 

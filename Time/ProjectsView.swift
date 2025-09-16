@@ -363,23 +363,8 @@ struct ProjectDetailView: View {
 
     // Helper function to calculate session duration respecting pause state
     private func sessionDuration(_ session: WorkSession, now: Date) -> TimeInterval {
-        if let _ = session.end {
-            // Session is complete, return the accumulated working time
-            // (elapsedBeforePause contains the total time when session was stopped)
-            return session.elapsedBeforePause
-        } else {
-            // Session is still running, check if it's paused
-            if session.lastResume == nil {
-                // Paused - return only elapsed time before pause
-                return session.elapsedBeforePause
-            } else if let lr = session.lastResume {
-                // Active - return elapsed before pause + current segment
-                return session.elapsedBeforePause + now.timeIntervalSince(lr)
-            } else {
-                // Fallback - return elapsed before pause
-                return session.elapsedBeforePause
-            }
-        }
+        // Use the corrected duration property from the model
+        return session.duration
     }
 
 
@@ -678,23 +663,8 @@ struct ProjectRowView: View {
 
     // Helper function to calculate session duration respecting pause state
     private func sessionDuration(_ session: WorkSession, now: Date) -> TimeInterval {
-        if let _ = session.end {
-            // Session is complete, return the accumulated working time
-            // (elapsedBeforePause contains the total time when session was stopped)
-            return session.elapsedBeforePause
-        } else {
-            // Session is still running, check if it's paused
-            if session.lastResume == nil {
-                // Paused - return only elapsed time before pause
-                return session.elapsedBeforePause
-            } else if let lr = session.lastResume {
-                // Active - return elapsed before pause + current segment
-                return session.elapsedBeforePause + now.timeIntervalSince(lr)
-            } else {
-                // Fallback - return elapsed before pause
-                return session.elapsedBeforePause
-            }
-        }
+        // Use the corrected duration property from the model
+        return session.duration
     }
 }
 
