@@ -103,9 +103,9 @@ final class WorkSession: Identifiable {
     }
 
     var duration: TimeInterval {
-        // For completed sessions (with end date), calculate simple duration
-        if let endDate = end {
-            return endDate.timeIntervalSince(start)
+        // For completed sessions (with end date), return the accumulated working time
+        if let _ = end {
+            return elapsedBeforePause
         }
 
         // For ongoing sessions, use the accumulated approach

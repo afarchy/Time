@@ -345,8 +345,9 @@ struct ProjectDetailView: View {
             // finalize the session: accumulate any active segment and set end
             if let lr = running.lastResume {
                 running.elapsedBeforePause += Date().timeIntervalSince(lr)
-                running.lastResume = nil
             }
+            // Important: clear lastResume to indicate session is stopped, not just paused
+            running.lastResume = nil
             running.end = Date()
             runningSession = nil
             do { try modelContext.save() } catch { print("Error saving stop: \(error)") }
@@ -356,9 +357,10 @@ struct ProjectDetailView: View {
 
     // Helper function to calculate session duration respecting pause state
     private func sessionDuration(_ session: WorkSession, now: Date) -> TimeInterval {
-        if let end = session.end {
-            // Session is complete, return total duration
-            return end.timeIntervalSince(session.start)
+        if let _ = session.end {
+            // Session is complete, return the accumulated working time
+            // (elapsedBeforePause contains the total time when session was stopped)
+            return session.elapsedBeforePause
         } else {
             // Session is still running, check if it's paused
             if session.lastResume == nil {
@@ -670,9 +672,10 @@ struct ProjectRowView: View {
 
     // Helper function to calculate session duration respecting pause state
     private func sessionDuration(_ session: WorkSession, now: Date) -> TimeInterval {
-        if let end = session.end {
-            // Session is complete, return total duration
-            return end.timeIntervalSince(session.start)
+        if let _ = session.end {
+            // Session is complete, return the accumulated working time
+            // (elapsedBeforePause contains the total time when session was stopped)
+            return session.elapsedBeforePause
         } else {
             // Session is still running, check if it's paused
             if session.lastResume == nil {
