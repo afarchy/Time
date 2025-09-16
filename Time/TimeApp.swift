@@ -8,6 +8,7 @@
 import SwiftUI
 import SwiftData
 import UserNotifications
+import ActivityKit
 
 @main
 struct TimeApp: App {
@@ -24,6 +25,12 @@ struct TimeApp: App {
                         } else {
                             print("Notification permission granted: \(granted)")
                         }
+                    }
+
+                    // Check Live Activity authorization status
+                    if #available(iOS 16.1, *) {
+                        let authInfo = ActivityAuthorizationInfo()
+                        print("Live Activities enabled: \(authInfo.areActivitiesEnabled)")
                     }
                 }
         }

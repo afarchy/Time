@@ -6,7 +6,20 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		006E905F2E7910D700DEB175 /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 006E905E2E7910D700DEB175 /* WidgetKit.framework */; };
+		006E90612E7910D700DEB175 /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 006E90602E7910D700DEB175 /* SwiftUI.framework */; };
+		006E90722E7910D800DEB175 /* TimeWidgetsExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 006E905C2E7910D700DEB175 /* TimeWidgetsExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+/* End PBXBuildFile section */
+
 /* Begin PBXContainerItemProxy section */
+		006E90702E7910D800DEB175 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 0087DAB92E786D7D002E3EDF /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 006E905B2E7910D700DEB175;
+			remoteInfo = TimeWidgetsExtension;
+		};
 		0087DAD42E786D7E002E3EDF /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = 0087DAB92E786D7D002E3EDF /* Project object */;
@@ -23,13 +36,48 @@
 		};
 /* End PBXContainerItemProxy section */
 
+/* Begin PBXCopyFilesBuildPhase section */
+		006E90772E7910D800DEB175 /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				006E90722E7910D800DEB175 /* TimeWidgetsExtension.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
 /* Begin PBXFileReference section */
+		006E905C2E7910D700DEB175 /* TimeWidgetsExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = TimeWidgetsExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		006E905E2E7910D700DEB175 /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = System/Library/Frameworks/WidgetKit.framework; sourceTree = SDKROOT; };
+		006E90602E7910D700DEB175 /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = System/Library/Frameworks/SwiftUI.framework; sourceTree = SDKROOT; };
 		0087DAC12E786D7D002E3EDF /* Time.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Time.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		0087DAD32E786D7E002E3EDF /* TimeTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = TimeTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		0087DADD2E786D7E002E3EDF /* TimeUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = TimeUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		006E90732E7910D800DEB175 /* Exceptions for "TimeWidgets" folder in "TimeWidgetsExtension" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 006E905B2E7910D700DEB175 /* TimeWidgetsExtension */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
 /* Begin PBXFileSystemSynchronizedRootGroup section */
+		006E90622E7910D700DEB175 /* TimeWidgets */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				006E90732E7910D800DEB175 /* Exceptions for "TimeWidgets" folder in "TimeWidgetsExtension" target */,
+			);
+			path = TimeWidgets;
+			sourceTree = "<group>";
+		};
 		0087DAC32E786D7D002E3EDF /* Time */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = Time;
@@ -48,6 +96,15 @@
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
+		006E90592E7910D700DEB175 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				006E90612E7910D700DEB175 /* SwiftUI.framework in Frameworks */,
+				006E905F2E7910D700DEB175 /* WidgetKit.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		0087DABE2E786D7D002E3EDF /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
@@ -72,12 +129,23 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		006E905D2E7910D700DEB175 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				006E905E2E7910D700DEB175 /* WidgetKit.framework */,
+				006E90602E7910D700DEB175 /* SwiftUI.framework */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
 		0087DAB82E786D7D002E3EDF = {
 			isa = PBXGroup;
 			children = (
 				0087DAC32E786D7D002E3EDF /* Time */,
 				0087DAD62E786D7E002E3EDF /* TimeTests */,
 				0087DAE02E786D7E002E3EDF /* TimeUITests */,
+				006E90622E7910D700DEB175 /* TimeWidgets */,
+				006E905D2E7910D700DEB175 /* Frameworks */,
 				0087DAC22E786D7D002E3EDF /* Products */,
 			);
 			sourceTree = "<group>";
@@ -88,6 +156,7 @@
 				0087DAC12E786D7D002E3EDF /* Time.app */,
 				0087DAD32E786D7E002E3EDF /* TimeTests.xctest */,
 				0087DADD2E786D7E002E3EDF /* TimeUITests.xctest */,
+				006E905C2E7910D700DEB175 /* TimeWidgetsExtension.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -95,6 +164,28 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
+		006E905B2E7910D700DEB175 /* TimeWidgetsExtension */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 006E90742E7910D800DEB175 /* Build configuration list for PBXNativeTarget "TimeWidgetsExtension" */;
+			buildPhases = (
+				006E90582E7910D700DEB175 /* Sources */,
+				006E90592E7910D700DEB175 /* Frameworks */,
+				006E905A2E7910D700DEB175 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				006E90622E7910D700DEB175 /* TimeWidgets */,
+			);
+			name = TimeWidgetsExtension;
+			packageProductDependencies = (
+			);
+			productName = TimeWidgetsExtension;
+			productReference = 006E905C2E7910D700DEB175 /* TimeWidgetsExtension.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
 		0087DAC02E786D7D002E3EDF /* Time */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = 0087DAE72E786D7F002E3EDF /* Build configuration list for PBXNativeTarget "Time" */;
@@ -102,10 +193,12 @@
 				0087DABD2E786D7D002E3EDF /* Sources */,
 				0087DABE2E786D7D002E3EDF /* Frameworks */,
 				0087DABF2E786D7D002E3EDF /* Resources */,
+				006E90772E7910D800DEB175 /* Embed Foundation Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				006E90712E7910D800DEB175 /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				0087DAC32E786D7D002E3EDF /* Time */,
@@ -173,6 +266,9 @@
 				LastSwiftUpdateCheck = 1620;
 				LastUpgradeCheck = 1620;
 				TargetAttributes = {
+					006E905B2E7910D700DEB175 = {
+						CreatedOnToolsVersion = 16.2;
+					};
 					0087DAC02E786D7D002E3EDF = {
 						CreatedOnToolsVersion = 16.2;
 					};
@@ -203,11 +299,19 @@
 				0087DAC02E786D7D002E3EDF /* Time */,
 				0087DAD22E786D7E002E3EDF /* TimeTests */,
 				0087DADC2E786D7E002E3EDF /* TimeUITests */,
+				006E905B2E7910D700DEB175 /* TimeWidgetsExtension */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
+		006E905A2E7910D700DEB175 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		0087DABF2E786D7D002E3EDF /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -232,6 +336,13 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
+		006E90582E7910D700DEB175 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		0087DABD2E786D7D002E3EDF /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -256,6 +367,11 @@
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
+		006E90712E7910D800DEB175 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 006E905B2E7910D700DEB175 /* TimeWidgetsExtension */;
+			targetProxy = 006E90702E7910D800DEB175 /* PBXContainerItemProxy */;
+		};
 		0087DAD52E786D7E002E3EDF /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			target = 0087DAC02E786D7D002E3EDF /* Time */;
@@ -269,6 +385,60 @@
 /* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
+		006E90752E7910D800DEB175 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = XMVK2B4WXP;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = TimeWidgets/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = TimeWidgets;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.virtualmaker.Time.TimeWidgets;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		006E90762E7910D800DEB175 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = XMVK2B4WXP;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = TimeWidgets/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = TimeWidgets;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.virtualmaker.Time.TimeWidgets;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
 		0087DAE52E786D7F002E3EDF /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -399,6 +569,7 @@
 				DEVELOPMENT_TEAM = XMVK2B4WXP;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSSupportsLiveActivities = YES;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -428,6 +599,7 @@
 				DEVELOPMENT_TEAM = XMVK2B4WXP;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSSupportsLiveActivities = YES;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -521,6 +693,15 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
+		006E90742E7910D800DEB175 /* Build configuration list for PBXNativeTarget "TimeWidgetsExtension" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				006E90752E7910D800DEB175 /* Debug */,
+				006E90762E7910D800DEB175 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 		0087DABC2E786D7D002E3EDF /* Build configuration list for PBXProject "Time" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (

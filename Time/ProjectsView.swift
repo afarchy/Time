@@ -1,6 +1,7 @@
 import SwiftUI
 import SwiftData
 import UserNotifications
+import ActivityKit
 
 struct ProjectsView: View {
     @Environment(\.modelContext) private var modelContext
@@ -311,6 +312,7 @@ struct ProjectDetailView: View {
                 running.lastResume = Date()
                 do { try modelContext.save() } catch { print("Error saving resume: \(error)") }
                 scheduleRunningNotification(for: running)
+                LiveActivityManager.shared.handleSessionResume(running, project: project)
             } else {
                 // Session is active, so pause it
                 running.elapsedBeforePause += Date().timeIntervalSince(running.lastResume!)
@@ -318,6 +320,7 @@ struct ProjectDetailView: View {
                 do { try modelContext.save() } catch { print("Error saving pause: \(error)") }
                 // cancel notifications while paused
                 cancelRunningNotifications(for: running)
+                LiveActivityManager.shared.handleSessionPause(running, project: project)
             }
         } else {
             // No running session - either start new or resume existing paused session
@@ -328,6 +331,7 @@ struct ProjectDetailView: View {
                 runningSession = other
                 do { try modelContext.save() } catch { print("Error saving resume: \(error)") }
                 scheduleRunningNotification(for: other)
+                LiveActivityManager.shared.handleSessionResume(other, project: project)
                 return
             }
             // otherwise create a new session
@@ -337,6 +341,7 @@ struct ProjectDetailView: View {
             runningSession = s
             do { try modelContext.save() } catch { print("Error saving start: \(error)") }
             scheduleRunningNotification(for: s)
+            LiveActivityManager.shared.handleSessionStart(s, project: project)
         }
     }
 
@@ -352,6 +357,7 @@ struct ProjectDetailView: View {
             runningSession = nil
             do { try modelContext.save() } catch { print("Error saving stop: \(error)") }
             cancelRunningNotifications(for: running)
+            LiveActivityManager.shared.handleSessionStop()
         }
     }
 
