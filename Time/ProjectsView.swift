@@ -273,11 +273,24 @@ struct ProjectDetailView: View {
         .onAppear {
             // find a running session (no end)
             runningSession = project.sessions.first(where: { $0.end == nil })
+
+            // Safety check: if there's a session but it's paused, ensure notifications are cancelled
+            if let session = runningSession, session.lastResume == nil {
+                cancelRunningNotifications(for: session)
+            }
+
+            // Clean up any orphaned notifications
+            cleanupOrphanedNotifications()
         }
         .onChange(of: scenePhase) { old, new in
             if new == .active {
                 // app became active — refresh running session
                 runningSession = project.sessions.first(where: { $0.end == nil })
+
+                // Safety check: if there's a session but it's paused, ensure notifications are cancelled
+                if let session = runningSession, session.lastResume == nil {
+                    cancelRunningNotifications(for: session)
+                }
             }
         }
         .sheet(isPresented: $showingLogPastSession) {
@@ -413,6 +426,38 @@ struct ProjectDetailView: View {
         }
 
         center.removePendingNotificationRequests(withIdentifiers: identifiers)
+    }
+
+    // Clean up any orphaned notifications for sessions that shouldn't have them
+    private func cleanupOrphanedNotifications() {
+        let center = UNUserNotificationCenter.current()
+
+        // Get all pending notifications
+        center.getPendingNotificationRequests { requests in
+            let sessionBasedRequests = requests.filter { $0.identifier.contains("-hour-") }
+            var identifiersToRemove: [String] = []
+
+            for request in sessionBasedRequests {
+                let sessionIdString = request.identifier.components(separatedBy: "-hour-").first ?? ""
+
+                // Check if this session should have notifications
+                if let sessionId = UUID(uuidString: sessionIdString),
+                   let session = project.sessions.first(where: { $0.id == sessionId }) {
+
+                    // Cancel notifications for sessions that are ended or paused
+                    if session.end != nil || session.lastResume == nil {
+                        identifiersToRemove.append(request.identifier)
+                    }
+                } else {
+                    // Cancel notifications for sessions that no longer exist
+                    identifiersToRemove.append(request.identifier)
+                }
+            }
+
+            if !identifiersToRemove.isEmpty {
+                center.removePendingNotificationRequests(withIdentifiers: identifiersToRemove)
+            }
+        }
     }
 
     private var totalTimeString: String {
