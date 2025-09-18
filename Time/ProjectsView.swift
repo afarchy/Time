@@ -282,6 +282,9 @@ struct ProjectDetailView: View {
 
             // Clean up any orphaned notifications
             cleanupOrphanedNotifications()
+
+            // Also clean up any stale timer notifications globally
+            cleanupAllTimerNotifications()
         }
         .onChange(of: scenePhase) { old, new in
             if new == .active {
@@ -419,6 +422,9 @@ struct ProjectDetailView: View {
         }
 
         center.removePendingNotificationRequests(withIdentifiers: identifiers)
+
+        // Also cancel any delivered notifications for this session
+        center.removeDeliveredNotifications(withIdentifiers: identifiers)
     }
 
     // Clean up any orphaned notifications for sessions that shouldn't have them
@@ -427,11 +433,11 @@ struct ProjectDetailView: View {
 
         // Get all pending notifications
         center.getPendingNotificationRequests { requests in
-            let sessionBasedRequests = requests.filter { $0.identifier.contains("-hour-") }
+            let sessionBasedRequests = requests.filter { $0.identifier.contains("-hour-") || $0.identifier.count == 36 } // UUID length
             var identifiersToRemove: [String] = []
 
             for request in sessionBasedRequests {
-                let sessionIdString = request.identifier.components(separatedBy: "-hour-").first ?? ""
+                let sessionIdString = request.identifier.components(separatedBy: "-hour-").first ?? request.identifier
 
                 // Check if this session should have notifications
                 if let sessionId = UUID(uuidString: sessionIdString),
@@ -447,8 +453,38 @@ struct ProjectDetailView: View {
                 }
             }
 
+            // If there's no running session, cancel ALL timer notifications
+            if runningSession == nil {
+                let allTimerNotifications = requests.filter {
+                    $0.content.title.contains("Hourly Time Reminder") ||
+                    $0.identifier.contains("-hour-") ||
+                    $0.identifier.count == 36 // UUID format
+                }
+                identifiersToRemove.append(contentsOf: allTimerNotifications.map { $0.identifier })
+            }
+
             if !identifiersToRemove.isEmpty {
                 center.removePendingNotificationRequests(withIdentifiers: identifiersToRemove)
+                center.removeDeliveredNotifications(withIdentifiers: identifiersToRemove)
+            }
+        }
+    }
+
+    // Clean up ALL timer notifications globally when no session is running
+    private func cleanupAllTimerNotifications() {
+        let center = UNUserNotificationCenter.current()
+
+        center.getPendingNotificationRequests { requests in
+            let timerNotifications = requests.filter {
+                $0.content.title.contains("Hourly Time Reminder") ||
+                $0.content.body.contains("Working on") ||
+                $0.identifier.contains("-hour-")
+            }
+
+            let identifiers = timerNotifications.map { $0.identifier }
+            if !identifiers.isEmpty {
+                center.removePendingNotificationRequests(withIdentifiers: identifiers)
+                center.removeDeliveredNotifications(withIdentifiers: identifiers)
             }
         }
     }
