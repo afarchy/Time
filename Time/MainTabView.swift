@@ -9,6 +9,12 @@ struct MainTabView: View {
                     Text("Projects")
                 }
 
+            WeeklySummaryView()
+                .tabItem {
+                    Image(systemName: "calendar.badge.clock")
+                    Text("Weekly")
+                }
+
             CategorySummaryView()
                 .tabItem {
                     Image(systemName: "chart.pie")
