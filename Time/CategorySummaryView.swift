@@ -5,7 +5,6 @@ import Charts
 struct CategorySummaryView: View {
     @Environment(\.modelContext) private var modelContext
     @Query(sort: [SortDescriptor(\Category.name)]) private var categories: [Category]
-    @State private var showingEditSheet = false
     @State private var categoryToEdit: Category?
     @State private var hasInitializedColors = false
 
@@ -105,7 +104,6 @@ struct CategorySummaryView: View {
 
                                     Button(action: {
                                         categoryToEdit = category
-                                        showingEditSheet = true
                                     }) {
                                         Image(systemName: "pencil")
                                             .foregroundColor(.blue)
@@ -132,10 +130,9 @@ struct CategorySummaryView: View {
             .onAppear {
                 ensureCategoriesHaveColors()
             }
-            .sheet(isPresented: $showingEditSheet) {
-                if let category = categoryToEdit {
-                    CategoryEditView(category: category)
-                }
+            .sheet(item: $categoryToEdit) { category in
+                CategoryEditView(category: category)
+                    .environment(\.modelContext, modelContext)
             }
         }
     }
@@ -163,28 +160,34 @@ struct CategoryEditView: View {
     ]
 
     var body: some View {
-        NavigationView {
-            Form {
-                Section("Category Details") {
-                    TextField("Category Name", text: $editedName)
-                }
+        NavigationStack {
+            VStack {
+                Text("Edit Category: \(category.name)")
+                    .font(.title)
+                    .padding()
 
-                Section("Color") {
-                    LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 5), spacing: 12) {
-                        ForEach(predefinedColors, id: \.self) { color in
-                            Circle()
-                                .fill(Color(hex: color))
-                                .frame(width: 40, height: 40)
-                                .overlay(
-                                    Circle()
-                                        .stroke(editedColorHex == color ? Color.primary : Color.clear, lineWidth: 3)
-                                )
-                                .onTapGesture {
-                                    editedColorHex = color
-                                }
-                        }
+                Form {
+                    Section("Category Details") {
+                        TextField("Category Name", text: $editedName)
                     }
-                    .padding(.vertical, 8)
+
+                    Section("Color") {
+                        LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 5), spacing: 12) {
+                            ForEach(predefinedColors, id: \.self) { color in
+                                Circle()
+                                    .fill(Color(hex: color))
+                                    .frame(width: 40, height: 40)
+                                    .overlay(
+                                        Circle()
+                                            .stroke(editedColorHex == color ? Color.primary : Color.clear, lineWidth: 3)
+                                    )
+                                    .onTapGesture {
+                                        editedColorHex = color
+                                    }
+                            }
+                        }
+                        .padding(.vertical, 8)
+                    }
                 }
             }
             .navigationTitle("Edit Category")
