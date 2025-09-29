@@ -32,13 +32,10 @@ struct WeeklySummaryView: View {
                 projectTimes[projectName, default: 0] += duration
             }
 
-            let dayPercentage = min(100, (totalTime / (24 * 3600)) * 100)
-
             return DayData(
                 date: day,
                 projectTimes: projectTimes,
-                totalTime: totalTime,
-                dayPercentage: dayPercentage
+                totalTime: totalTime
             )
         }
     }
@@ -73,6 +70,10 @@ struct WeeklySummaryView: View {
         return workSessions.filter { session in
             session.start >= selectedWeekStart && session.start < weekEnd
         }
+    }
+
+    private var weeklyTotalTime: TimeInterval {
+        sessionsInSelectedWeek.reduce(0) { $0 + $1.duration }
     }
 
     private var weekDateFormatter: DateFormatter {
@@ -110,7 +111,23 @@ struct WeeklySummaryView: View {
                     .cornerRadius(8)
                 }
                 .padding(.horizontal)
-                .padding(.bottom)
+                .padding(.bottom, 8)
+
+                // Weekly total
+                if weeklyTotalTime > 0 {
+                    HStack {
+                        Text("Total Time:")
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                        Spacer()
+                        Text(WeeklyDurationFormatter.string(from: weeklyTotalTime))
+                            .font(.headline)
+                            .fontWeight(.semibold)
+                    }
+                    .padding(.horizontal)
+                    .padding(.top, 8)
+                    .padding(.bottom)
+                }
 
                 List {
                     // Daily breakdown
@@ -145,9 +162,16 @@ struct WeeklySummaryView: View {
                                         Text(slice.name)
                                             .font(.subheadline)
                                         Spacer()
-                                        Text(DurationFormatter.string(from: slice.value))
-                                            .font(.caption)
-                                            .foregroundColor(.secondary)
+                                        HStack(spacing: 8) {
+                                            Text(WeeklyDurationFormatter.string(from: slice.value))
+                                                .font(.caption)
+                                                .foregroundColor(.secondary)
+                                            if weeklyTotalTime > 0 {
+                                                Text("(\((slice.value / weeklyTotalTime * 100), specifier: "%.1f")%)")
+                                                    .font(.caption)
+                                                    .foregroundColor(.secondary)
+                                            }
+                                        }
                                     }
                                     .padding(.vertical, 2)
                                 }
@@ -182,7 +206,6 @@ struct DayData {
     let date: Date
     let projectTimes: [String: TimeInterval]
     let totalTime: TimeInterval
-    let dayPercentage: Double
 }
 
 struct DayRowView: View {
@@ -211,14 +234,9 @@ struct DayRowView: View {
                     .foregroundColor(.secondary)
                 Spacer()
                 if dayData.totalTime > 0 {
-                    VStack(alignment: .trailing) {
-                        Text(DurationFormatter.string(from: dayData.totalTime))
-                            .font(.subheadline)
-                            .fontWeight(.medium)
-                        Text("\(dayData.dayPercentage, specifier: "%.1f")% of day")
-                            .font(.caption2)
-                            .foregroundColor(.secondary)
-                    }
+                    Text(WeeklyDurationFormatter.string(from: dayData.totalTime))
+                        .font(.subheadline)
+                        .fontWeight(.medium)
                 } else {
                     Text("No time tracked")
                         .font(.caption)
@@ -235,9 +253,16 @@ struct DayRowView: View {
                                 .font(.caption)
                                 .foregroundColor(.secondary)
                             Spacer()
-                            Text(DurationFormatter.string(from: time))
-                                .font(.caption)
-                                .foregroundColor(.secondary)
+                            HStack(spacing: 4) {
+                                Text(WeeklyDurationFormatter.string(from: time))
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                                if dayData.totalTime > 0 {
+                                    Text("(\((time / dayData.totalTime * 100), specifier: "%.1f")%)")
+                                        .font(.caption2)
+                                        .foregroundColor(.secondary)
+                                }
+                            }
                         }
                     }
                 }
@@ -310,6 +335,21 @@ struct ProjectSlice: Identifiable {
     var name: String
     var value: TimeInterval
     var color: String
+}
+
+struct WeeklyDurationFormatter {
+    static func string(from interval: TimeInterval) -> String {
+        let ti = Int(interval)
+        let h = ti / 3600
+        let m = (ti % 3600) / 60
+        if h > 0 {
+            return String(format: "%dh %02dm", h, m)
+        } else if m > 0 {
+            return String(format: "%dm", m)
+        } else {
+            return "< 1m"
+        }
+    }
 }
 
 extension Date {
