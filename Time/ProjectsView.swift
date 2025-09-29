@@ -149,6 +149,7 @@ struct ProjectDetailView: View {
     @State private var showingConfirmDelete: WorkSession?
     @State private var showingLogPastSession = false
     @State private var showingStartInPast = false
+    @State private var showingEditProject = false
 
     var body: some View {
         // Use TimelineView at the top level to ensure all duration calculations that depend
@@ -185,9 +186,10 @@ struct ProjectDetailView: View {
 
             VStack {
                 HStack {
-                    Text(project.name).font(.largeTitle)
                     Spacer()
                     Text(DurationFormatter.string(from: total))
+                        .font(.title2)
+                        .fontWeight(.semibold)
                 }
                 .padding()
 
@@ -261,6 +263,15 @@ struct ProjectDetailView: View {
                 }
             }
         }
+        .navigationTitle(project.name)
+        .navigationBarTitleDisplayMode(.large)
+        .toolbar {
+            ToolbarItem(placement: .navigationBarTrailing) {
+                Button("Edit") {
+                    showingEditProject = true
+                }
+            }
+        }
         .confirmationDialog("Delete session?", isPresented: Binding(get: { showingConfirmDelete != nil }, set: { if !$0 { showingConfirmDelete = nil } })) {
             Button("Delete", role: .destructive) {
                 if let s = showingConfirmDelete {
@@ -303,6 +314,10 @@ struct ProjectDetailView: View {
         }
         .sheet(isPresented: $showingStartInPast) {
             StartInPastView(project: project)
+                .environment(\.modelContext, modelContext)
+        }
+        .sheet(isPresented: $showingEditProject) {
+            ProjectEditView(project: project)
                 .environment(\.modelContext, modelContext)
         }
     }
