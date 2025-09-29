@@ -150,6 +150,7 @@ struct ProjectDetailView: View {
     @State private var showingLogPastSession = false
     @State private var showingStartInPast = false
     @State private var showingEditProject = false
+    @State private var sessionToEdit: WorkSession?
 
     var body: some View {
         // Use TimelineView at the top level to ensure all duration calculations that depend
@@ -252,6 +253,14 @@ struct ProjectDetailView: View {
                             }
                             Spacer()
                             Text(DurationFormatter.string(from: sessionDuration(session, now: now)))
+
+                            Button(action: {
+                                sessionToEdit = session
+                            }) {
+                                Image(systemName: "pencil")
+                                    .foregroundColor(.blue)
+                            }
+                            .buttonStyle(PlainButtonStyle())
                         }
                     }
                     .onDelete { idx in
@@ -318,6 +327,10 @@ struct ProjectDetailView: View {
         }
         .sheet(isPresented: $showingEditProject) {
             ProjectEditView(project: project)
+                .environment(\.modelContext, modelContext)
+        }
+        .sheet(item: $sessionToEdit) { session in
+            EditSessionView(session: session, project: project)
                 .environment(\.modelContext, modelContext)
         }
     }
@@ -1185,6 +1198,312 @@ struct StartInPastView: View {
                 }
             }
         }
+    }
+
+    private func formatDuration(_ timeInterval: TimeInterval) -> String {
+        let hours = Int(timeInterval) / 3600
+        let minutes = (Int(timeInterval) % 3600) / 60
+        return "\(hours):\(String(format: "%02d", minutes))"
+    }
+}
+
+struct EditSessionView: View {
+    @Environment(\.modelContext) private var modelContext
+    @Environment(\.dismiss) private var dismiss
+
+    let session: WorkSession
+    let project: Project
+
+    @State private var startDate: Date
+    @State private var duration: TimeInterval
+    @State private var customDurationText = ""
+    @State private var showingDatePicker = false
+    @State private var showingEndTimePicker = false
+    @State private var editingMode: DurationEditMode = .duration
+
+    enum DurationEditMode {
+        case duration, endTime
+    }
+
+    struct DurationPreset: Identifiable {
+        let id = UUID()
+        let duration: TimeInterval
+        let label: String
+
+        init(minutes: Int) {
+            self.duration = TimeInterval(minutes * 60)
+            if minutes < 60 {
+                self.label = "\(minutes)m"
+            } else {
+                let hours = minutes / 60
+                let remainingMinutes = minutes % 60
+                if remainingMinutes == 0 {
+                    self.label = "\(hours)h"
+                } else {
+                    self.label = "\(hours)h \(remainingMinutes)m"
+                }
+            }
+        }
+    }
+
+    private let durationPresets: [DurationPreset] = [
+        DurationPreset(minutes: 15),   // 15 minutes
+        DurationPreset(minutes: 30),   // 30 minutes
+        DurationPreset(minutes: 45),   // 45 minutes
+        DurationPreset(minutes: 60),   // 1 hour
+        DurationPreset(minutes: 90),   // 1.5 hours
+        DurationPreset(minutes: 120),  // 2 hours
+        DurationPreset(minutes: 180),  // 3 hours
+        DurationPreset(minutes: 240)   // 4 hours
+    ]
+
+    init(session: WorkSession, project: Project) {
+        self.session = session
+        self.project = project
+
+        // Initialize state with current session values
+        // For completed sessions, we only use elapsedBeforePause
+        self._startDate = State(initialValue: session.start)
+        self._duration = State(initialValue: session.elapsedBeforePause)
+    }
+
+    var body: some View {
+        NavigationView {
+            Form {
+                Section("Project") {
+                    HStack {
+                        Circle()
+                            .fill(Color(hex: project.category?.colorHex ?? "#007AFF"))
+                            .frame(width: 12, height: 12)
+                        Text(project.name)
+                        Spacer()
+                        Text(project.category?.name ?? "No Category")
+                            .foregroundColor(.secondary)
+                    }
+                }
+
+                Section("Date & Time") {
+                    Button(action: {
+                        showingDatePicker = true
+                    }) {
+                        HStack {
+                            Text("Start Date")
+                            Spacer()
+                            Text(startDate, style: .date)
+                                .foregroundColor(.primary)
+                            Text(startDate, style: .time)
+                                .foregroundColor(.primary)
+                        }
+                    }
+                    .foregroundColor(.primary)
+                }
+
+                Section {
+                    // Mode picker
+                    Picker("Edit Mode", selection: $editingMode) {
+                        Text("Duration").tag(DurationEditMode.duration)
+                        Text("End Time").tag(DurationEditMode.endTime)
+                    }
+                    .pickerStyle(SegmentedPickerStyle())
+                    .onChange(of: editingMode) { _, newMode in
+                        if newMode == .duration {
+                            // When switching back to duration mode, populate custom text if duration doesn't match presets
+                            let matchesPreset = durationPresets.contains { abs($0.duration - duration) < 1 }
+                            if !matchesPreset {
+                                customDurationText = formatDuration(duration)
+                            } else {
+                                customDurationText = ""
+                            }
+                        } else {
+                            customDurationText = ""
+                        }
+                    }
+
+                    if editingMode == .duration {
+                        // Duration presets
+                        VStack(spacing: 10) {
+                            HStack(spacing: 10) {
+                                ForEach(Array(durationPresets.prefix(4))) { preset in
+                                    Button(action: {
+                                        print("DEBUG: Button tapped for preset: \(preset.label) duration: \(preset.duration)")
+                                        duration = preset.duration
+                                        customDurationText = ""
+                                    }) {
+                                        Text(preset.label)
+                                            .font(.caption)
+                                            .padding(.vertical, 8)
+                                            .frame(maxWidth: .infinity)
+                                            .background(abs(duration - preset.duration) < 1 ? Color.blue : Color.gray.opacity(0.2))
+                                            .foregroundColor(abs(duration - preset.duration) < 1 ? .white : .primary)
+                                            .cornerRadius(8)
+                                    }
+                                    .buttonStyle(PlainButtonStyle())
+                                }
+                            }
+
+                            HStack(spacing: 10) {
+                                ForEach(Array(durationPresets.suffix(4))) { preset in
+                                    Button(action: {
+                                        print("DEBUG: Button tapped for preset: \(preset.label) duration: \(preset.duration)")
+                                        duration = preset.duration
+                                        customDurationText = ""
+                                    }) {
+                                        Text(preset.label)
+                                            .font(.caption)
+                                            .padding(.vertical, 8)
+                                            .frame(maxWidth: .infinity)
+                                            .background(abs(duration - preset.duration) < 1 ? Color.blue : Color.gray.opacity(0.2))
+                                            .foregroundColor(abs(duration - preset.duration) < 1 ? .white : .primary)
+                                            .cornerRadius(8)
+                                    }
+                                    .buttonStyle(PlainButtonStyle())
+                                }
+                            }
+                        }
+                        .padding(.vertical, 4)
+
+                        TextField("Custom duration (e.g., 2:30)", text: $customDurationText)
+                            .onChange(of: customDurationText) { _, newValue in
+                                if let customDuration = parseDuration(newValue) {
+                                    duration = customDuration
+                                }
+                            }
+                    } else {
+                        // End time picker
+                        Button(action: {
+                            showingEndTimePicker = true
+                        }) {
+                            HStack {
+                                Text("End Time")
+                                Spacer()
+                                Text(endTime, style: .time)
+                                    .foregroundColor(.primary)
+                            }
+                        }
+                        .foregroundColor(.primary)
+                    }
+                } header: {
+                    Text(editingMode == .duration ? "Duration" : "End Time")
+                }
+
+                Section("Summary") {
+                    VStack(alignment: .leading, spacing: 8) {
+                        HStack {
+                            Text("Start:")
+                            Spacer()
+                            Text(startDate, style: .time)
+                        }
+                        HStack {
+                            Text("Duration:")
+                            Spacer()
+                            Text(formatDuration(duration))
+                        }
+                        HStack {
+                            Text("End:")
+                            Spacer()
+                            Text(startDate.addingTimeInterval(duration), style: .time)
+                        }
+                    }
+                    .font(.system(.body, design: .monospaced))
+                }
+            }
+            .navigationTitle("Edit Session")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button("Cancel") {
+                        dismiss()
+                    }
+                }
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Save") {
+                        updateSession()
+                        dismiss()
+                    }
+                    .disabled(duration <= 0)
+                }
+            }
+            .onAppear {
+                // Initialize custom duration text if current duration doesn't match presets
+                let matchesPreset = durationPresets.contains { abs($0.duration - duration) < 1 }
+                if !matchesPreset {
+                    customDurationText = formatDuration(duration)
+                }
+            }
+            .sheet(isPresented: $showingDatePicker) {
+                NavigationView {
+                    DatePicker("Start Date", selection: $startDate)
+                        .datePickerStyle(.wheel)
+                        .padding()
+                        .navigationTitle("Select Date")
+                        .navigationBarTitleDisplayMode(.inline)
+                        .toolbar {
+                            ToolbarItem(placement: .navigationBarTrailing) {
+                                Button("Done") {
+                                    showingDatePicker = false
+                                }
+                            }
+                        }
+                }
+                .presentationDetents([.medium])
+            }
+            .sheet(isPresented: $showingEndTimePicker) {
+                NavigationView {
+                    DatePicker("End Time", selection: Binding(
+                        get: { endTime },
+                        set: { newEndTime in
+                            let newDuration = newEndTime.timeIntervalSince(startDate)
+                            if newDuration > 0 {
+                                duration = newDuration
+                            }
+                        }
+                    ))
+                    .datePickerStyle(.wheel)
+                    .padding()
+                    .navigationTitle("Select End Time")
+                    .navigationBarTitleDisplayMode(.inline)
+                    .toolbar {
+                        ToolbarItem(placement: .navigationBarTrailing) {
+                            Button("Done") {
+                                showingEndTimePicker = false
+                            }
+                        }
+                    }
+                }
+                .presentationDetents([.medium])
+            }
+        }
+    }
+
+    // Computed property for end time
+    private var endTime: Date {
+        startDate.addingTimeInterval(duration)
+    }
+
+    private func updateSession() {
+        // Update the existing session
+        session.start = startDate
+        session.elapsedBeforePause = duration
+        session.lastResume = nil // Clear any resume time since we're setting a fixed duration
+
+        do {
+            try modelContext.save()
+        } catch {
+            print("Error updating session: \(error)")
+        }
+    }
+
+    private func parseDuration(_ text: String) -> TimeInterval? {
+        let components = text.split(separator: ":").compactMap { Double($0) }
+        if components.count == 2 {
+            let hours = components[0]
+            let minutes = components[1]
+            return hours * 3600 + minutes * 60
+        } else if components.count == 1 {
+            // Just minutes
+            return components[0] * 60
+        }
+        return nil
     }
 
     private func formatDuration(_ timeInterval: TimeInterval) -> String {
