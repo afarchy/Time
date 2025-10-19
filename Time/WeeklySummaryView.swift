@@ -76,6 +76,59 @@ struct WeeklySummaryView: View {
         sessionsInSelectedWeek.reduce(0) { $0 + $1.duration }
     }
 
+    private var weeklyCategorySummary: [ProjectSlice] {
+        var categoryTotals: [String: (time: TimeInterval, color: String)] = [:]
+
+        for session in sessionsInSelectedWeek {
+            let categoryName = session.project?.category?.name ?? "No Category"
+            let categoryColor = session.project?.category?.colorHex ?? "#999999"
+            let duration = session.duration
+
+            if let existing = categoryTotals[categoryName] {
+                categoryTotals[categoryName] = (existing.time + duration, existing.color)
+            } else {
+                categoryTotals[categoryName] = (duration, categoryColor)
+            }
+        }
+
+        return categoryTotals.compactMap { (name, data) in
+            data.time > 0 ? ProjectSlice(
+                id: UUID(),
+                name: name,
+                value: data.time,
+                color: data.color
+            ) : nil
+        }.sorted { $0.value > $1.value }
+    }
+
+    private var dailyCategoryData: [DayData] {
+        weekDays.map { day in
+            let dayStart = Calendar.current.startOfDay(for: day)
+            let dayEnd = Calendar.current.date(byAdding: .day, value: 1, to: dayStart)!
+
+            let daySessions = workSessions.filter { session in
+                session.start >= dayStart && session.start < dayEnd
+            }
+
+            var categoryTimes: [String: TimeInterval] = [:]
+            var totalTime: TimeInterval = 0
+
+            for session in daySessions {
+                let duration = session.duration
+                totalTime += duration
+
+                let categoryName = session.project?.category?.name ?? "No Category"
+                categoryTimes[categoryName, default: 0] += duration
+            }
+
+            return DayData(
+                date: day,
+                projectTimes: categoryTimes,
+                totalTime: totalTime
+            )
+        }
+    }
+
     private var weekDateFormatter: DateFormatter {
         let formatter = DateFormatter()
         formatter.dateFormat = "MMM d, yyyy"
@@ -221,6 +274,83 @@ struct WeeklySummaryView: View {
 
                                 // Project time table
                                 ProjectTimeTable(projects: weeklyProjectSummary.prefix(10).map { $0 }, totalTime: weeklyTotalTime)
+                                    .padding(.top, 8)
+                            }
+                            .padding(.vertical, 8)
+                        }
+                    }
+
+                    // Weekly category pie chart
+                    if !weeklyCategorySummary.isEmpty {
+                        Section("Weekly Category Summary") {
+                            VStack {
+                                Chart(weeklyCategorySummary) { slice in
+                                    SectorMark(
+                                        angle: .value("Time", slice.value),
+                                        innerRadius: .ratio(0.4),
+                                        outerRadius: .ratio(0.8)
+                                    )
+                                    .foregroundStyle(Color(hex: slice.color))
+                                    .opacity(0.8)
+                                }
+                                .chartLegend(.visible)
+                                .frame(height: 200)
+
+                                // Category list
+                                ProjectTimeTable(projects: weeklyCategorySummary, totalTime: weeklyTotalTime)
+                            }
+                            .padding(.vertical)
+                        }
+                    }
+
+                    // Daily category distribution
+                    if !dailyCategoryData.isEmpty && dailyCategoryData.contains(where: { $0.totalTime > 0 }) {
+                        Section("Daily Category Distribution") {
+                            VStack(alignment: .leading, spacing: 12) {
+                                Chart {
+                                    ForEach(dailyCategoryData, id: \.date) { dayData in
+                                        ForEach(Array(dayData.projectTimes.keys.sorted()), id: \.self) { categoryName in
+                                            if let time = dayData.projectTimes[categoryName], time > 0 {
+                                                BarMark(
+                                                    x: .value("Day", dayFormatter.string(from: dayData.date)),
+                                                    y: .value("Time", time / 3600) // Convert to hours
+                                                )
+                                                .foregroundStyle(by: .value("Category", categoryName))
+                                            }
+                                        }
+                                    }
+                                }
+                                .chartYAxis {
+                                    AxisMarks(position: .leading) { value in
+                                        AxisValueLabel {
+                                            if let hours = value.as(Double.self) {
+                                                Text("\(Int(hours))h")
+                                            }
+                                        }
+                                    }
+                                }
+                                .chartXAxis {
+                                    AxisMarks { value in
+                                        AxisValueLabel {
+                                            if let day = value.as(String.self) {
+                                                Text(day)
+                                                    .font(.caption)
+                                            }
+                                        }
+                                    }
+                                }
+                                .chartForegroundStyleScale { (categoryName: String) in
+                                    // Find the color for this category from the sessions
+                                    if let session = sessionsInSelectedWeek.first(where: { $0.project?.category?.name == categoryName }) {
+                                        return Color(hex: session.project?.category?.colorHex ?? "#999999")
+                                    }
+                                    return Color.gray
+                                }
+                                .chartLegend(.hidden)
+                                .frame(height: 250)
+
+                                // Category time table
+                                ProjectTimeTable(projects: weeklyCategorySummary.prefix(10).map { $0 }, totalTime: weeklyTotalTime)
                                     .padding(.top, 8)
                             }
                             .padding(.vertical, 8)
