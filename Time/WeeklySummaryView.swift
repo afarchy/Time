@@ -154,27 +154,7 @@ struct WeeklySummaryView: View {
                                 .frame(height: 200)
 
                                 // Project list
-                                ForEach(weeklyProjectSummary, id: \.id) { slice in
-                                    HStack {
-                                        Circle()
-                                            .fill(Color(hex: slice.color))
-                                            .frame(width: 12, height: 12)
-                                        Text(slice.name)
-                                            .font(.subheadline)
-                                        Spacer()
-                                        HStack(spacing: 8) {
-                                            Text(WeeklyDurationFormatter.string(from: slice.value))
-                                                .font(.caption)
-                                                .foregroundColor(.secondary)
-                                            if weeklyTotalTime > 0 {
-                                                Text("(\((slice.value / weeklyTotalTime * 100), specifier: "%.1f")%)")
-                                                    .font(.caption)
-                                                    .foregroundColor(.secondary)
-                                            }
-                                        }
-                                    }
-                                    .padding(.vertical, 2)
-                                }
+                                ProjectTimeTable(projects: weeklyProjectSummary, totalTime: weeklyTotalTime)
                             }
                             .padding(.vertical)
                         }
@@ -192,11 +172,97 @@ struct WeeklySummaryView: View {
                             .frame(maxWidth: .infinity)
                         }
                     }
+
+                    // Daily Stacked Bar Chart
+                    if !weeklyData.isEmpty && weeklyData.contains(where: { $0.totalTime > 0 }) {
+                        Section("Daily Project Distribution") {
+                            VStack(alignment: .leading, spacing: 12) {
+                                Chart {
+                                    ForEach(weeklyData, id: \.date) { dayData in
+                                        ForEach(Array(dayData.projectTimes.keys.sorted()), id: \.self) { projectName in
+                                            if let time = dayData.projectTimes[projectName], time > 0 {
+                                                BarMark(
+                                                    x: .value("Day", dayFormatter.string(from: dayData.date)),
+                                                    y: .value("Time", time / 3600) // Convert to hours
+                                                )
+                                                .foregroundStyle(by: .value("Project", projectName))
+                                            }
+                                        }
+                                    }
+                                }
+                                .chartYAxis {
+                                    AxisMarks(position: .leading) { value in
+                                        AxisValueLabel {
+                                            if let hours = value.as(Double.self) {
+                                                Text("\(Int(hours))h")
+                                            }
+                                        }
+                                    }
+                                }
+                                .chartXAxis {
+                                    AxisMarks { value in
+                                        AxisValueLabel {
+                                            if let day = value.as(String.self) {
+                                                Text(day)
+                                                    .font(.caption)
+                                            }
+                                        }
+                                    }
+                                }
+                                .chartForegroundStyleScale { (projectName: String) in
+                                    // Find the color for this project from the sessions
+                                    if let session = sessionsInSelectedWeek.first(where: { $0.project?.name == projectName }) {
+                                        return Color(hex: session.project?.category?.colorHex ?? "#999999")
+                                    }
+                                    return Color.gray
+                                }
+                                .chartLegend(.hidden)
+                                .frame(height: 250)
+
+                                // Project time table
+                                ProjectTimeTable(projects: weeklyProjectSummary.prefix(10).map { $0 }, totalTime: weeklyTotalTime)
+                                    .padding(.top, 8)
+                            }
+                            .padding(.vertical, 8)
+                        }
+                    }
                 }
             }
             .navigationTitle("Weekly Summary")
             .sheet(isPresented: $showingWeekPicker) {
                 WeekPickerView(selectedWeekStart: $selectedWeekStart)
+            }
+        }
+    }
+}
+
+// Reusable project time table component
+struct ProjectTimeTable: View {
+    let projects: [ProjectSlice]
+    let totalTime: TimeInterval
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            ForEach(projects, id: \.id) { slice in
+                HStack {
+                    Circle()
+                        .fill(Color(hex: slice.color))
+                        .frame(width: 12, height: 12)
+                    Text(slice.name)
+                        .font(.subheadline)
+                    Spacer()
+                    HStack(spacing: 8) {
+                        Text(WeeklyDurationFormatter.string(from: slice.value))
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                        if totalTime > 0 {
+                            Text("(\((slice.value / totalTime * 100), specifier: "%.1f")%)")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                    }
+                }
+                .padding(.vertical, 2)
             }
         }
     }
