@@ -5,24 +5,90 @@ import ActivityKit
 
 struct ProjectsView: View {
     @Environment(\.modelContext) private var modelContext
-    @Query(sort: [SortDescriptor(\Project.name)]) private var projects: [Project]
+    @Query private var projects: [Project]
 
     // Explicit no-argument initializer to avoid synthesized-memberwise access issues
     init() {}
 
     @State private var showingAdd = false
     @State private var editProject: Project?
+    @State private var searchText = ""
+
+    // Computed properties for filtering and sorting
+    private var filteredProjects: [Project] {
+        let filtered: [Project]
+        if searchText.isEmpty {
+            filtered = projects
+        } else {
+            filtered = projects.filter { project in
+                project.name.localizedCaseInsensitiveContains(searchText) ||
+                (project.category?.name.localizedCaseInsensitiveContains(searchText) ?? false)
+            }
+        }
+
+        // Sort by most recently used
+        return filtered.sorted { project1, project2 in
+            let date1 = lastUsedDate(for: project1)
+            let date2 = lastUsedDate(for: project2)
+            return date1 > date2
+        }
+    }
+
+    private var groupedProjects: [(String, [Project])] {
+        let calendar = Calendar.current
+
+        var today: [Project] = []
+        var yesterday: [Project] = []
+        var older: [Project] = []
+
+        for project in filteredProjects {
+            let lastUsed = lastUsedDate(for: project)
+
+            if calendar.isDateInToday(lastUsed) {
+                today.append(project)
+            } else if calendar.isDateInYesterday(lastUsed) {
+                yesterday.append(project)
+            } else {
+                older.append(project)
+            }
+        }
+
+        var groups: [(String, [Project])] = []
+        if !today.isEmpty {
+            groups.append(("Today", today))
+        }
+        if !yesterday.isEmpty {
+            groups.append(("Yesterday", yesterday))
+        }
+        if !older.isEmpty {
+            groups.append(("Older", older))
+        }
+
+        return groups
+    }
+
+    private func lastUsedDate(for project: Project) -> Date {
+        // Get the most recent session start date, or distant past if no sessions
+        project.sessions.map(\.start).max() ?? Date.distantPast
+    }
 
     var body: some View {
         NavigationSplitView {
             List {
-                ForEach(projects) { project in
-                    ProjectRowView(project: project) {
-                        editProject = project
+                ForEach(groupedProjects, id: \.0) { sectionTitle, projectsInSection in
+                    Section(header: Text(sectionTitle)) {
+                        ForEach(projectsInSection) { project in
+                            ProjectRowView(project: project) {
+                                editProject = project
+                            }
+                        }
+                        .onDelete { offsets in
+                            deleteFromSection(offsets: offsets, projects: projectsInSection)
+                        }
                     }
                 }
-                .onDelete(perform: delete)
             }
+            .searchable(text: $searchText, prompt: "Search projects")
             .navigationTitle("Projects")
             .navigationDestination(for: Project.self) { project in
                 ProjectDetailView(project: project)
@@ -47,6 +113,14 @@ struct ProjectsView: View {
             }
         } detail: {
             Text("Select a project")
+        }
+    }
+
+    private func deleteFromSection(offsets: IndexSet, projects: [Project]) {
+        withAnimation {
+            for index in offsets {
+                modelContext.delete(projects[index])
+            }
         }
     }
 
